@@ -90,6 +90,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        
+        // Android 12+ compatibility
+        multiDexEnabled true
     }
     signingConfigs {
         debug {
@@ -117,8 +120,8 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     
-    // UVC Camera library
-    implementation(name: 'libuvc-3.2.9', ext: 'aar')
+    // UVC Camera library - temporarily commented out for Android 12 testing
+    // implementation(name: 'libuvc-3.2.9', ext: 'aar')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

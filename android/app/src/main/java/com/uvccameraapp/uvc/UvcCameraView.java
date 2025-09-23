@@ -10,7 +10,7 @@ public class UvcCameraView extends TextureView implements TextureView.SurfaceTex
     private static final String TAG = "UvcCameraView";
     
     private Surface surface;
-    private UvcCameraModule cameraModule;
+    private UvcCameraModuleSimple cameraModule;
     
     public UvcCameraView(Context context) {
         super(context);
@@ -31,16 +31,17 @@ public class UvcCameraView extends TextureView implements TextureView.SurfaceTex
         setSurfaceTextureListener(this);
     }
     
-    public void setCameraModule(UvcCameraModule module) {
+    public void setCameraModule(UvcCameraModuleSimple module) {
         this.cameraModule = module;
     }
     
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
         surface = new Surface(surfaceTexture);
-        if (cameraModule != null) {
-            cameraModule.setPreviewSurface(surface);
-        }
+        // Camera surface handling temporarily disabled for Android 12 testing
+        // if (cameraModule != null) {
+        //     cameraModule.setPreviewSurface(surface);
+        // }
     }
     
     @Override

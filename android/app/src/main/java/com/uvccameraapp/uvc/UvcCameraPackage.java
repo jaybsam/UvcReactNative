@@ -17,15 +17,19 @@ public class UvcCameraPackage implements ReactPackage {
     @Override
     public List<NativeModule> createNativeModules(@NonNull ReactApplicationContext reactContext) {
         List<NativeModule> modules = new ArrayList<>();
-        modules.add(new UvcCameraModule(reactContext));
+        // Temporarily use simple module to test Android 12 compatibility
+        modules.add(new UvcCameraModuleSimple(reactContext));
+        // modules.add(new UvcCameraModule(reactContext));
         return modules;
     }
     
     @NonNull
     @Override
     public List<ViewManager> createViewManagers(@NonNull ReactApplicationContext reactContext) {
-        List<ViewManager> viewManagers = new ArrayList<>();
-        viewManagers.add(new UvcCameraViewManager(reactContext));
-        return viewManagers;
+        // Temporarily disable view managers for testing
+        return Collections.emptyList();
+        // List<ViewManager> viewManagers = new ArrayList<>();
+        // viewManagers.add(new UvcCameraViewManager(reactContext));
+        // return viewManagers;
     }
 }

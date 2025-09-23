@@ -35,7 +35,11 @@ public class UvcCameraModule extends ReactContextBaseJavaModule {
     public UvcCameraModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
-        initUSBMonitor();
+        try {
+            initUSBMonitor();
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing USB monitor in constructor", e);
+        }
     }
     
     @NonNull
@@ -46,7 +50,12 @@ public class UvcCameraModule extends ReactContextBaseJavaModule {
     
     private void initUSBMonitor() {
         if (usbMonitor == null) {
-            usbMonitor = new USBMonitor(reactContext, usbMonitorListener);
+            try {
+                usbMonitor = new USBMonitor(reactContext, usbMonitorListener);
+                Log.d(TAG, "USB monitor initialized successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error creating USB monitor", e);
+            }
         }
     }
     
@@ -86,15 +95,20 @@ public class UvcCameraModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void startMonitoring(Promise promise) {
         try {
+            // Ensure USB monitor is initialized
+            if (usbMonitor == null) {
+                initUSBMonitor();
+            }
+            
             if (usbMonitor != null) {
                 usbMonitor.register();
                 promise.resolve("USB monitoring started");
             } else {
-                promise.reject("ERROR", "USB monitor not initialized");
+                promise.reject("ERROR", "USB monitor not initialized - this may be due to Android security restrictions");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error starting USB monitoring", e);
-            promise.reject("ERROR", e.getMessage());
+            promise.reject("ERROR", "Failed to start monitoring: " + e.getMessage());
         }
     }
     

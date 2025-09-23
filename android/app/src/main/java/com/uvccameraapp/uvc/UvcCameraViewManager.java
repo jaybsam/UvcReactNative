@@ -35,7 +35,7 @@ public class UvcCameraViewManager extends SimpleViewManager<UvcCameraView> {
         UvcCameraView cameraView = new UvcCameraView(reactContext);
         
         // Try to get the camera module from the native modules
-        UvcCameraModule cameraModule = reactContext.getNativeModule(UvcCameraModule.class);
+        UvcCameraModuleSimple cameraModule = reactContext.getNativeModule(UvcCameraModuleSimple.class);
         if (cameraModule != null) {
             cameraView.setCameraModule(cameraModule);
         }

@@ -20,34 +20,89 @@ const CameraScreen: React.FC = () => {
   const cameraViewRef = useRef(null);
 
   useEffect(() => {
-    requestPermissions();
+    const initializeApp = async () => {
+      try {
+        setStatus('Initializing app...');
+        await requestPermissions();
+        setStatus('Ready - Tap "Start Monitoring" to begin');
+      } catch (error) {
+        console.error('App initialization error:', error);
+        setStatus(`Initialization error: ${error}`);
+      }
+    };
+
+    initializeApp();
+
     return () => {
       // Cleanup on unmount
-      if (isMonitoring) {
-        handleStopMonitoring();
-      }
+      const cleanup = async () => {
+        try {
+          if (isMonitoring) {
+            await handleStopMonitoring();
+          }
+        } catch (error) {
+          console.error('Cleanup error:', error);
+        }
+      };
+      cleanup();
     };
   }, []);
 
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
       try {
-        const granted = await PermissionsAndroid.requestMultiple([
+        // Check Android version for proper permission handling
+        const androidVersion = Platform.Version;
+        console.log('Android version:', androidVersion);
+        
+        let permissionsToRequest = [
           PermissionsAndroid.PERMISSIONS.CAMERA,
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        ]);
+        ];
+
+        // Add storage permissions based on Android version
+        if (androidVersion >= 33) {
+          // Android 13+ (API 33+)
+          permissionsToRequest.push(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO
+          );
+        } else if (androidVersion >= 30) {
+          // Android 11-12 (API 30-32)
+          permissionsToRequest.push(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+          );
+        } else {
+          // Android 10 and below
+          permissionsToRequest.push(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+          );
+        }
+
+        const granted = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 
         const allPermissionsGranted = Object.values(granted).every(
           permission => permission === PermissionsAndroid.RESULTS.GRANTED
         );
 
         if (!allPermissionsGranted) {
-          Alert.alert('Permissions required', 'Camera and storage permissions are required for this app to work properly.');
+          Alert.alert(
+            'Permissions Required', 
+            'Camera and storage permissions are required for this app to work properly. Please grant them in Settings if you denied them.',
+            [
+              { text: 'OK' },
+              { text: 'Open Settings', onPress: () => {
+                // You can add code to open app settings here if needed
+              }}
+            ]
+          );
+        } else {
+          setStatus('Permissions granted successfully');
         }
       } catch (err) {
-        console.warn(err);
+        console.warn('Permission request error:', err);
+        Alert.alert('Permission Error', 'Failed to request permissions. Please try again.');
       }
     }
   };
@@ -140,7 +195,7 @@ const CameraScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>UVC Camera App</Text>
+      <Text style={styles.title}>UVC React Native</Text>
       
       <View style={styles.statusContainer}>
         <Text style={styles.statusLabel}>Status: </Text>
@@ -180,12 +235,14 @@ const CameraScreen: React.FC = () => {
       </View>
 
       <View style={styles.cameraContainer}>
-        <UvcCameraView
-          ref={cameraViewRef}
-          style={styles.cameraView}
-          onCameraReady={() => setStatus('Camera ready')}
-          onCameraError={(error) => setStatus(`Camera error: ${error}`)}
-        />
+        <View style={styles.cameraPlaceholder}>
+          <Text style={styles.cameraPlaceholderText}>📹</Text>
+          <Text style={styles.cameraPlaceholderTitle}>Camera Preview</Text>
+          <Text style={styles.cameraPlaceholderSubtitle}>
+            Will be available after UVC library{'\n'}
+            compatibility is resolved
+          </Text>
+        </View>
       </View>
 
       <ScrollView style={styles.deviceList}>
@@ -210,8 +267,27 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     color: '#333',
+  },
+  infoBox: {
+    backgroundColor: '#e8f5e8',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#388E3C',
+    lineHeight: 20,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -266,6 +342,28 @@ const styles = StyleSheet.create({
   },
   cameraView: {
     flex: 1,
+  },
+  cameraPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  cameraPlaceholderText: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  cameraPlaceholderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  cameraPlaceholderSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   deviceList: {
     flex: 1,
