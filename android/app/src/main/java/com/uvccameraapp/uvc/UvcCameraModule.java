@@ -1,0 +1,200 @@
+package com.uvccameraapp.uvc;
+
+import android.content.Context;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbManager;
+import android.util.Log;
+import android.view.Surface;
+
+import androidx.annotation.NonNull;
+
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableMap;
+
+import com.jiangdg.usb.DeviceFilter;
+import com.jiangdg.usb.USBMonitor;
+import com.jiangdg.uvc.UVCCamera;
+
+import java.util.HashMap;
+import java.util.List;
+
+public class UvcCameraModule extends ReactContextBaseJavaModule {
+    private static final String TAG = "UvcCameraModule";
+    private static final String MODULE_NAME = "UvcCamera";
+    
+    private ReactApplicationContext reactContext;
+    private USBMonitor usbMonitor;
+    private UVCCamera uvcCamera;
+    private Surface previewSurface;
+    
+    public UvcCameraModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        this.reactContext = reactContext;
+        initUSBMonitor();
+    }
+    
+    @NonNull
+    @Override
+    public String getName() {
+        return MODULE_NAME;
+    }
+    
+    private void initUSBMonitor() {
+        if (usbMonitor == null) {
+            usbMonitor = new USBMonitor(reactContext, usbMonitorListener);
+        }
+    }
+    
+    private final USBMonitor.OnDeviceConnectListener usbMonitorListener = new USBMonitor.OnDeviceConnectListener() {
+        @Override
+        public void onAttach(UsbDevice device) {
+            Log.d(TAG, "USB device attached: " + device.getDeviceName());
+            if (usbMonitor != null) {
+                usbMonitor.requestPermission(device);
+            }
+        }
+        
+        @Override
+        public void onDetach(UsbDevice device) {
+            Log.d(TAG, "USB device detached: " + device.getDeviceName());
+            closeCamera();
+        }
+        
+        @Override
+        public void onConnect(UsbDevice device, USBMonitor.UsbControlBlock ctrlBlock, boolean createNew) {
+            Log.d(TAG, "USB device connected: " + device.getDeviceName());
+            openCamera(ctrlBlock);
+        }
+        
+        @Override
+        public void onDisconnect(UsbDevice device, USBMonitor.UsbControlBlock ctrlBlock) {
+            Log.d(TAG, "USB device disconnected: " + device.getDeviceName());
+            closeCamera();
+        }
+        
+        @Override
+        public void onCancel(UsbDevice device) {
+            Log.d(TAG, "USB permission cancelled: " + device.getDeviceName());
+        }
+    };
+    
+    @ReactMethod
+    public void startMonitoring(Promise promise) {
+        try {
+            if (usbMonitor != null) {
+                usbMonitor.register();
+                promise.resolve("USB monitoring started");
+            } else {
+                promise.reject("ERROR", "USB monitor not initialized");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting USB monitoring", e);
+            promise.reject("ERROR", e.getMessage());
+        }
+    }
+    
+    @ReactMethod
+    public void stopMonitoring(Promise promise) {
+        try {
+            if (usbMonitor != null) {
+                usbMonitor.unregister();
+            }
+            closeCamera();
+            promise.resolve("USB monitoring stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping USB monitoring", e);
+            promise.reject("ERROR", e.getMessage());
+        }
+    }
+    
+    @ReactMethod
+    public void getConnectedDevices(Promise promise) {
+        try {
+            WritableArray devices = Arguments.createArray();
+            
+            if (usbMonitor != null) {
+                List<UsbDevice> deviceList = usbMonitor.getDeviceList();
+                for (UsbDevice device : deviceList) {
+                    WritableMap deviceMap = Arguments.createMap();
+                    deviceMap.putString("deviceName", device.getDeviceName());
+                    deviceMap.putInt("vendorId", device.getVendorId());
+                    deviceMap.putInt("productId", device.getProductId());
+                    deviceMap.putString("manufacturerName", device.getManufacturerName());
+                    deviceMap.putString("productName", device.getProductName());
+                    devices.pushMap(deviceMap);
+                }
+            }
+            
+            promise.resolve(devices);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting connected devices", e);
+            promise.reject("ERROR", e.getMessage());
+        }
+    }
+    
+    @ReactMethod
+    public void startPreview(Promise promise) {
+        try {
+            if (uvcCamera != null && previewSurface != null) {
+                uvcCamera.setPreviewSize(640, 480, 1); // Using 1 for MJPEG format
+                uvcCamera.setPreviewDisplay(previewSurface);
+                uvcCamera.startPreview();
+                promise.resolve("Preview started");
+            } else {
+                promise.reject("ERROR", "Camera not connected or surface not available");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting preview", e);
+            promise.reject("ERROR", e.getMessage());
+        }
+    }
+    
+    @ReactMethod
+    public void stopPreview(Promise promise) {
+        try {
+            if (uvcCamera != null) {
+                uvcCamera.stopPreview();
+                promise.resolve("Preview stopped");
+            } else {
+                promise.reject("ERROR", "Camera not connected");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping preview", e);
+            promise.reject("ERROR", e.getMessage());
+        }
+    }
+    
+    private void openCamera(USBMonitor.UsbControlBlock ctrlBlock) {
+        try {
+            closeCamera();
+            uvcCamera = new UVCCamera();
+            uvcCamera.open(ctrlBlock);
+            Log.d(TAG, "UVC Camera opened successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening UVC camera", e);
+            closeCamera();
+        }
+    }
+    
+    private void closeCamera() {
+        if (uvcCamera != null) {
+            try {
+                uvcCamera.stopPreview();
+                uvcCamera.close();
+                uvcCamera.destroy();
+            } catch (Exception e) {
+                Log.e(TAG, "Error closing camera", e);
+            }
+            uvcCamera = null;
+        }
+    }
+    
+    public void setPreviewSurface(Surface surface) {
+        this.previewSurface = surface;
+    }
+}

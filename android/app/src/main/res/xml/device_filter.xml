@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- This will allow the app to detect any USB device -->
+    <!-- For UVC cameras, you can specify specific vendor/product IDs if needed -->
+    <usb-device class="14" subclass="1" protocol="0" />
+    <usb-device class="14" subclass="2" protocol="0" />
+    
+    <!-- Generic USB device filter -->
+    <usb-device />
+</resources>
